@@ -1,0 +1,77 @@
+on:
+  push:
+  pull_request:
+
+name: Update
+
+jobs:
+  update:
+    runs-on: macos-11
+    name: update bundle
+    steps:
+      - name: prep volume
+        shell: bash
+        run: |
+          diskutil list
+          sudo diskutil apfs list
+          diskutil apfs addVolume disk1 APFS bundle
+
+      - shell: bash
+        name: Install GFortran
+        run: |
+          echo "::group::Installing Fortran"
+          echo "Downloading Fortran..."
+          curl --retry 3 -fLo /tmp/gfortran82.dmg https://github.com/fxcoudert/gfortran-for-macOS/releases/download/8.2/gfortran-8.2-Mojave.dmg
+          sudo hdiutil attach /tmp/gfortran82.dmg -mountpoint /Volumes/gfortran
+          sudo installer -pkg "/Volumes/gfortran/gfortran-8.2-Mojave/gfortran.pkg" -target /Volumes/bundle
+          sudo hdiutil detach /Volumes/gfortran
+          rm -f /tmp/gfortran82.dmg
+          echo "Done installing Fortran!"
+          echo "::endgroup::"
+
+      - shell: bash
+        name: Install Pandoc
+        run: |
+          echo "::group::Installing Pandoc"
+          echo "Downloading Pandoc..."
+          curl --retry 3 -fLo /tmp/pandoc-2.14.2-macOS.pkg https://github.com/jgm/pandoc/releases/download/2.14.2/pandoc-2.14.2-macOS.pkg
+          sudo installer -pkg /tmp/pandoc-2.14.2-macOS.pkg -target /Volumes/bundle
+          rm -f /tmp/pandoc-2.14.2-macOS.pkg
+          echo "Done installing Pandoc!"
+          echo "::endgroup::"
+
+      - shell: bash
+        name: Install R
+        run: |
+          echo "::group::Installing R"
+          echo "Downloading R..."
+          curl --retry 3 -fLo /tmp/R-4.2.2.pkg https://cran.r-project.org/bin/macosx/base/R-4.2.2.pkg
+          # Installer fails in post-install script, probably harmless
+          sudo mkdir -p /Volumes/bundle/usr/bin
+          sudo mkdir -p /Volumes/bundle/usr/local/bin
+          sudo chmod 775 /Volumes/bundle/usr/bin
+          sudo chmod 775 /Volumes/bundle/usr/local/bin
+          sudo installer -pkg /tmp/R-4.2.2.pkg -target /Volumes/bundle || true
+          rm -f /tmp/R-4.2.2.pkg
+          echo "Done installing R!"
+          echo "::endgroup::"
+
+      - shell: bash
+        name: Install xQuartz
+        run: |
+          echo "::group::Installing XQuartz"
+          echo "Downloading XQuartz..."
+          curl --retry 3 -fLo /tmp/XQuartz-2.8.2.dmg https://github.com/XQuartz/XQuartz/releases/download/XQuartz-2.8.2/XQuartz-2.8.2.dmg
+          sudo hdiutil attach /tmp/XQuartz-2.8.2.dmg -mountpoint /Volumes/xquartz
+          sudo installer -pkg "/Volumes/xquartz/XQuartz.pkg" -target /Volumes/bundle
+          sudo hdiutil detach /Volumes/xquartz
+          rm -f /tmp/XQuartz-2.8.2.dmg
+          echo "Done installing XQuartz!"
+          echo "::endgroup::"
+
+      - shell: bash
+        name: List content
+        if: always()
+        run: ls -ltrR /Volumes/bundle
+
+
